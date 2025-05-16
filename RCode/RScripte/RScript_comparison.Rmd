@@ -1,0 +1,311 @@
+---
+title: "Comparison of savings potentials between measures"
+author: "Marlene Kindler"
+date: "2025-03-19"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Code for the comparison of savings potentials between measures.
+
+To execute, change:\
+- Login data for Nextcloud\
+- Adjust download location\
+- Adjust upload location\
+- Adjust URLs for uploading\
+
+### Load Packages: 
+```{r packages, error=FALSE,message=FALSE}
+# install.packages("httr")
+# install.packages("readxl")
+# install.packages("dplyr")
+# install.packages("writexl") 
+# install.packages("ggplot2")
+# install.packages("tidyr")
+# install.packages("openxlsx")
+# install.packages("flextable")
+# install.packages("officer")
+# install.packages("tidyverse")
+# install.packages("viridis")
+
+library(readxl)
+library(httr)
+library(dplyr)
+library(writexl)
+library(ggplot2)
+library(tidyr)
+library(openxlsx)
+library(flextable)
+library(officer)
+library(tidyverse)
+library(viridis)
+```
+
+### Parameters
+Parameters to be adjusted:
+```{r parameters}
+# storage location
+location_download <- "C:/Users/Klene/Documents/Uni_Bremen/WS24_25/Masterarbeit/R/Daten/"
+location_upload <- "C:/Users/Klene/Documents/Uni_Bremen/WS24_25/Masterarbeit/R/Results/"
+# Login data for NextCloud
+username <- "mkindler@uni-bremen.de" # username
+password <- "DLCi3-Qc4iD-dcHzR-fJaXr-cyKHR" # password
+# WebDAV-URL to upload
+nextcloud_url_2 <- "https://nc.uni-bremen.de/remote.php/dav/files/mkindler%40uni-bremen.de/Masterarbeit/Masterarbeit_II/R/Results/"
+```
+
+### Data preparation
+Load data:
+```{r load_data, warning=FALSE}
+# Load results data from Excel file
+results1 <- read.csv(paste0(location_upload, "01_data.csv"), check.names = FALSE, stringsAsFactors = FALSE)
+results2 <- read.csv(paste0(location_upload, "02_data.csv"), check.names = FALSE, stringsAsFactors = FALSE)
+results3 <- read.csv(paste0(location_upload, "03_data.csv"), check.names = FALSE, stringsAsFactors = FALSE)
+results4 <- read.csv(paste0(location_upload, "04_data.csv"), check.names = FALSE, stringsAsFactors = FALSE)
+
+# select only data on Climate Change
+climateChange1 <- results1[results1$`impact category` == "Climate change",] %>%
+  select("SP total", "norm. SP total", "prop. SP total", "relevant") %>%
+  rename(SP = "SP total",
+         "norm. SP" = "norm. SP total",
+         "prop. SP" = "prop. SP total") %>%
+  mutate(measure = "01")
+climateChange2 <- results2[results2$`impact category` == "Climate change",] %>%
+  select("SP FR", "norm. SP FR", "prop. SP FR", "relevant") %>%
+  rename(SP = "SP FR", 
+         "norm. SP" = "norm. SP FR", 
+         "prop. SP" = "prop. SP FR") %>%
+  mutate(measure = "02")
+climateChange3 <- results3[results3$`impact category` == "Climate change",] %>%
+  select("SP RF", "norm. SP RF", "prop. SP RF", "relevant") %>%
+  rename(SP = "SP RF", 
+         "norm. SP" = "norm. SP RF", 
+         "prop. SP" = "prop. SP RF") %>%
+  mutate(measure = "03")
+climateChange4 <- results4[results4$`impact category` == "Climate change",] %>%
+  select("SP MS", "norm. SP MS", "prop. SP MS", "relevant") %>%
+  rename(SP = "SP MS", 
+         "norm. SP" = "norm. SP MS", 
+         "prop. SP" = "prop. SP MS") %>%
+  mutate(measure = "04")
+
+climateChange <- bind_rows(climateChange1, climateChange2, climateChange3, climateChange4)
+```
+
+
+### Plot
+#### Plot the climate change savings potential
+```{r, warning=FALSE}
+climateChange <- climateChange %>%
+  arrange(desc(SP))
+climateChange$measure <- factor(climateChange$measure, levels = climateChange$measure)
+
+# Plot Climate change" impact category
+ggplot(climateChange, aes(x = `measure`, y = `SP`, fill = `measure`)) +
+  geom_bar(stat = "identity", width = 0.7, show.legend = FALSE) +
+  geom_hline(yintercept = 0, color = "black", linetype = "solid") +
+  geom_text(
+    aes(
+      label = round(`SP`, 0), 
+      vjust = ifelse(measure == "03", -1.2, -0.5)
+    ), 
+    size = 7
+  ) +
+  labs(
+    x = "Measure",
+    y = "Savings potential in kg CO2-Eq"
+  ) +
+  scale_fill_manual(values = c("01" = "lightskyblue4", 
+                               "02" = "brown", 
+                               "03" = "goldenrod2", 
+                               "04" = "turquoise4")) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    axis.title.x = element_text(size = 17), 
+    axis.title.y = element_text(size = 17)  
+  ) + 
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.09)))
+
+# Save plot
+ggsave(paste0(location_upload, "Comparison_CO2.png"), dpi = 600)
+```
+
+#### Plot normalized data of relevant impact categories in comparison:
+Data preparation:
+```{r}
+# Data collection
+data1 <- results1 %>%
+  rename("measure 1" = "norm. SP total") %>%
+  select("impact category", "unit", "measure 1")
+data2 <- results2 %>%
+  rename("measure 2" = "norm. SP FR") %>%
+  select("impact category", "measure 2")
+data3 <- results3 %>%
+  rename("measure 3" = "norm. SP RF") %>%
+  select("impact category", "measure 3")
+data4 <- results4 %>%
+  rename("measure 4" = "norm. SP MS") %>%
+  select("impact category", "measure 4")
+
+# Merge data of measures
+data <- left_join(data1, data2, by = c("impact category" = "impact category"))
+data <- left_join(data, data3, by = c("impact category" = "impact category"))
+data <- left_join(data, data4, by = c("impact category" = "impact category"))
+
+# Select relevant normalized results:
+data_table <- data %>%
+  filter(`impact category` %in% c("Water use", "Land use", "Eutrophication: freshwater", "Photochemical oxidant formation: human health", "Climate change")) %>%
+  mutate(`impact category` = factor(`impact category`, levels = c(
+    "Water use", 
+    "Land use", 
+    "Eutrophication: freshwater", 
+    "Photochemical oxidant formation: human health", 
+    "Climate change"
+  ))) %>%
+  arrange(`impact category`) %>%
+  mutate(across(
+    .cols = c(`measure 1`, `measure 2`, `measure 3`, `measure 4`),
+    .fns = ~ format(.x, scientific = TRUE, digits = 3)))
+
+
+# Conversion of data into long format
+data_table <- data_table %>%
+  select(`impact category`, unit, `measure 1`, `measure 2`, `measure 3`, `measure 4`) %>%
+  pivot_longer(
+    cols = starts_with("measure"),
+    names_to = "Measure",
+    values_to = "SavingsPotential"
+  ) %>%
+  mutate(SavingsPotential = as.numeric(SavingsPotential))
+
+# Order of measures and impact categories
+data_table$Measure <- factor(data_table$Measure, levels = c("measure 1", "measure 2", "measure 3", "measure 4"))
+# Rename long impact categories
+data_table <- data_table %>%
+  mutate(`impact category` = case_when(
+    `impact category` == "Photochemical oxidant formation: human health" ~ "POF",
+    `impact category` == "Eutrophication: freshwater" ~ "Eutroph. f",
+    TRUE ~ `impact category`
+  ))
+data_table$`impact category` <- factor(data_table$`impact category`, levels = c(
+  "Water use", "Land use","Eutroph. f", "POF", "Climate change"
+))
+
+ggplot(data_table, aes(x = Measure, y = `SavingsPotential`, fill = `impact category`)) +
+  annotate("rect", xmin = 0.5, xmax = 1.5, ymin = -Inf, ymax = -2.5e-10, fill = "lightskyblue4", alpha = 1) +
+  annotate("rect", xmin = 1.5, xmax = 2.5, ymin = -Inf, ymax = -2.5e-10, fill = "brown", alpha = 1) +
+  annotate("rect", xmin = 2.5, xmax = 3.5, ymin = -Inf, ymax = -2.5e-10, fill = "goldenrod2", alpha = 1) +
+  annotate("rect", xmin = 3.5, xmax = 4.5, ymin = -Inf, ymax = -2.5e-10, fill = "turquoise4", alpha = 1) +
+  
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  geom_hline(yintercept = 0, color = "black", linetype = "solid") +
+  scale_fill_manual(values = c("Water use" = "lightsteelblue2",
+                              "Land use" = "lightslategrey",
+                              "Eutroph. f" = "lightskyblue3",
+                              "POF" = "darkslategrey",
+                              "Climate change" = "lightskyblue4")) +
+                              
+  
+                              #c("Water use" = "grey30",
+                              # "Land use" = "grey46",
+                              # "Eutroph. f" = "grey",
+                              # "POF" = "grey79",
+                              # "Climate change" = "darkgrey")
+  
+                          #c("measure 1" = "lightskyblue4", 
+                           #    "measure 2" = "brown", 
+                            #   "measure 3" = "goldenrod2", 
+                             #  "measure 4" = "turquoise4")
+  labs(
+    x = "Measure",
+    y = "Savings potentials in % of PB",
+    fill = "Impact category"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 15),
+    axis.text.y = element_text(size = 15),
+    axis.title.x = element_text(size = 17),
+    axis.title.y = element_text(size = 17),
+    legend.position = "top",
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    plot.margin = margin(t = 0, r = 45, b = 0, l = 0)
+  ) + 
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.05))) 
+
+# Save as PNG
+ggsave(paste0(location_upload, "all_relevant_SPs_complex.png"), dpi = 600)
+```
+
+### Table
+create table:
+```{r}
+ft <- flextable(data_table) %>%
+  theme_vanilla() %>%
+  autofit() %>%
+  bold(part = "header") %>% 
+  border_outer() %>%
+  border_inner_h() %>%
+  border_inner_v()
+# Save as PNG
+tf <- tempfile(fileext = ".png")
+save_as_image(x = ft, path = paste0(location_upload, "_all_results_norm_relevant", ".png"))
+write.csv(data_table, paste0(location_upload, "_relevant_norm_data.csv"), row.names = FALSE)
+
+```
+
+
+
+
+### Upload files
+```{r, error=FALSE, warning=FALSE}
+# List of Excel files to be uploaded
+files_to_upload <- list.files(path = location_upload, pattern = "\\.xlsx$", full.names = TRUE)
+# Loop over all files and upload
+for (file_path in files_to_upload) {
+  # Creating the file name
+  file_name <- basename(file_path)
+  # Upload file
+  response <- PUT(
+    url = paste0(nextcloud_url_2, file_name),
+    authenticate(username, password),
+    body = upload_file(file_path)
+  )
+  # Check upload status
+  if (status_code(response) == 201) {
+    print(paste(file_name, "was successfully uploaded."))
+  } else if (status_code(response) == 204) {
+    print(paste(file_name, "was successfully replaced (no content returned)."))
+  } else {
+    print(paste("Error uploading", file_name, ". Status-Code:", status_code(response)))
+  }
+}
+
+# List of PNG files to be uploaded
+files_to_upload <- list.files(path = location_upload, pattern = "\\.png$", full.names = TRUE)
+# Loop over all files and upload
+for (file_path in files_to_upload) {
+  # Create the file name
+  file_name <- basename(file_path)
+  # Upload file
+  response <- PUT(
+    url = paste0(nextcloud_url_2, file_name),
+    authenticate(username, password),
+    body = upload_file(file_path)
+  )
+  # Check upload status
+  if (status_code(response) == 201) {
+    print(paste(file_name, "was successfully uploaded."))
+  } else if (status_code(response) == 204) {
+    print(paste(file_name, "was successfully replaced (no content returned)."))
+  } else {
+    print(paste("Error uploading", file_name, ". Status-Code:", status_code(response)))
+  }
+}
+```
+
