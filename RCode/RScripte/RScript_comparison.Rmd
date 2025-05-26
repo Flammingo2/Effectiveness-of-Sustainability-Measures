@@ -98,8 +98,6 @@ climateChange <- bind_rows(climateChange1, climateChange2, climateChange3, clima
 ### Plot
 #### Plot the climate change savings potential
 ```{r, warning=FALSE}
-climateChange <- climateChange %>%
-  arrange(desc(SP))
 climateChange$measure <- factor(climateChange$measure, levels = climateChange$measure)
 
 # Plot Climate change" impact category
@@ -234,7 +232,7 @@ ggplot(data_table, aes(x = Measure, y = `SavingsPotential`, fill = `impact categ
     legend.position = "top",
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 12),
-    plot.margin = margin(t = 0, r = 45, b = 0, l = 0)
+    plot.margin = margin(t = 0, r = 55, b = 0, l = 0)
   ) + 
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.05))) 
 
