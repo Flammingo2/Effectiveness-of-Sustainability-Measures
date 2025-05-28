@@ -113,7 +113,7 @@ ggplot(climateChange, aes(x = `measure`, y = `SP`, fill = `measure`)) +
   ) +
   labs(
     x = "Measure",
-    y = "Savings potential in kg CO2-Eq"
+    y = "Savings potential in kg CO2-eq/year"
   ) +
   scale_fill_manual(values = c("01" = "lightskyblue4", 
                                "02" = "brown", 
